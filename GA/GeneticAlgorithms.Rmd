@@ -35,17 +35,17 @@ Evolution is the change of heritable conditions of biological populations over s
 
 - Only the individuals who fit to the environment are **selected** in the next generation.
 
-Can we use the mechanism of evolution (variation and selection) to solve optimization problems?
+Can we use the mechanism of evolution (variation and selection) to solve optimisation problems?
 
 ## Genetic algorithms and evolution
 
-Genetic algorithm is a **metaheuristic** inspired in the process of natural selection and evolution
+Genetic algorithm is a **optimisation metaheuristic** inspired in the process of natural selection and evolution.
 
 - Metaheuristic: a template to create an algorithm to solve a specific problem.
 
-- Other metaheuristics: particle swarm optimization, simulated annealing, tabu search...
+- Other optimisation metaheuristics: particle swarm optimisation, simulated annealing, tabu search...
 
-First introduced by John Holland (1975) to simulate evolutionary processes, later used for optimization.
+First introduced by John Holland (1975) to simulate evolutionary processes, later used for optimisation.
 
 ## The genetic algorithm flow
 
@@ -363,7 +363,7 @@ The most used crossover operators are:
 
 ## Crossover operators
 
-**Whole arithmetic crossover:** from two parents $\mathbf{x}^1$ and $\mathbf{x}^1$ we can obtain two offspring:
+**Whole arithmetic crossover:** from two parents $\mathbf{x}^1$ and $\mathbf{x}^2$ we can obtain two offspring:
 
 $\alpha \mathbf{x}^1 +  (1- \alpha) \mathbf{x}^2$
 
@@ -402,7 +402,8 @@ It is frequent to reduce the radius as generations go (nonuniform mutation), sim
 ```{r, echo=TRUE}
 f <- function(x)  (x^2+x)*cos(x)
 lbound <- -10; ubound <- 10
-g01.real <- ga(type = "real-valued", fitness = f, lower = lbound, upper = ubound, seed=1313)
+g01.real <- ga(type = "real-valued", fitness = f, 
+lower = lbound, upper = ubound, seed=1313)
 ```
 
 This implementation also finds the optimum.
@@ -415,7 +416,7 @@ plot(g01.real)
 
 ## The Rastrigin function
 
-The Rastrigin function is a performance test for optimization algorithms, as it has a large search space and many local minima. For two variables:
+The **Rastrigin function** is a performance test for optimisation algorithms, as it has a large search space and many local minima. For two variables:
 
 $f = 20 + x_1^2 + x_2^2 - 10(cos2\pi x_1 + cos2\pi x_2)$
 
@@ -453,5 +454,193 @@ The GA finds the optimum $(0,0)$.
 plot(ga.rastrigin)
 ```
 
+# Using MATLAB for genetic algorithms
+
+## Solving optimisation problems with ga in MATLAB
+
+You can use MATLAB to solve optimisation (minimisation) problems with genetic algorithm using the **ga** solver.
+
+To use the **ga** solver, you need to install the **Global optimisation Toolbox**, an extension of the Optimisation Toolbox.
+
+## Solving optimisation problems with ga in MATLAB
+
+The generic structure of the **ga** function in MATLAB is:
+
+```{octave, echo=TRUE, eval=FALSE}
+x = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,options)
+```
+
+with:
+
+- **fun:** function to minimize (required).
+- **nvars:** number of variables (required).
+- **A, b:** linear inequalities $Ax \leq b$.
+- **Aeq, beq:** linear equalities $Ax = b$.
+- **lb, ub:** low and upper bounds.
+- **nonlcon:** function returning nonlinear constraints, being $c(x) \leq 0$ or $ceq(x) = 0$.
+- **options:** a set of options for the ga created with **optimoptions**.
+
+## Solving optimisation problems with ga in MATLAB
+
+The output of the **ga** can be of the form:
+
+```{octave, echo=TRUE, eval=FALSE}
+[x,fval,exitflag,output,population,scores] = ga(...)
+```
+
+with:
+
+- **x:** value of the solution.
+- **fval:** value of the function to optimize.
+- **exitflag:** identifier of the reason the algorithm stopped.
+- **output:** information about algorithm performance.
+- **population, scores:** matrix with the final population and scores vecctor of that final population.
+
+## Solving optimisation problems with ga in MATLAB
+
+To create the **options** variable we use the **optimoptions** function:
+
+```{octave, echo=TRUE, eval=FALSE}
+options = optimoptions('ga','Param1', value1, 
+                       'Param2', value2, ...);
+```
+
+To change population size:
+
+```{octave, echo=TRUE, eval=FALSE}
+options = optimoptions('ga', 'PopulationSize', 100)
+```
+
+To get an interactive plot of algorithm evolution:
+
+
+```{octave, echo=TRUE, eval=FALSE}
+options = optimoptions('ga', 'PlotFcn', 'gaplotbestf')
+```
+
+
+## Solving optimisation problems with ga in MATLAB
+
+You can find reference of genetic algorithms in MATLAB in the following links:
+
+[**ga** function](https://la.mathworks.com/help/gads/ga.html)
+
+[options](https://la.mathworks.com/help/gads/genetic-algorithm-options.html)
+
+## Minimising the Rastrigin function with MATLAB
+
+In MATLAB we can access the Rastrigin function with **@rastriginsfcn**
+
+**Exercise:** find the (unrestricted) minimum of the Rastrigin function with genetic algorithm in MATLAB with the following parameters:
+
+- Maximum number of generations: 1000.
+- Maximum number of runs without improvement (stalls): 300.
+- Plot the evolution of best value and mean value of generation **gaplotbestf**.
+
+## Solving a maximisation problem
+
+Reconsider the problem of maximising $(x^2 - x)cos(x)$ in the interval $-10 \leq x \leq 10$.
+
+Write a script with the fitness function and other script with the specification of the **ga** function, which plots algorithm evolution.
+
+# Constrained optimisation
+
+## Constrained optimisation
+
+We want to minimise the function:
+
+$f=100(x_1^2-x_2^2)^2+(1-x_1^2)^2$
+
+subject to the following constraints and bounds:
+
+$x_1x_2 + x_1 - x_2 + 1.5 \leq 0$
+
+$10 - x_1x_2 \leq 0$
+
+$0 \le x_1 \le 1$
+
+$0 \le x_2 \le 13$
+
+## Constrained optimisation
+
+Crossover and mutation operators may generate population members that do not satisfy constraints (although in general they discard solutions out of variable bounds).
+
+The way to discard these solutions is to generate a **fitness function with penalties**: solutions that do not satisfy constraints have bad values of fitness function.
+
+Note that fitness function != objective function.
+
+## Constrained optimisation
+
+The fitness function to our problem will be (both constraints are $\leq$ inequalities) minimising:
+
+$F = f + Mf_1 + Mf_2$
+
+Where:
+
+$f_1 = \text{MAX} (x_1x_2 + x_1 - x_2 + 1.5, 0)$
+
+$f_2 = \text{MAX} (10 - x_1x_2, 0)$
+
+## Solving constrained optimisation with MATLAB
+
+We need to create two scripts with files representing objective function and constraints:
+
+```{octave, echo=TRUE, eval=FALSE}
+function y = cam_function (x) 
+y = 100*(x(1)^2 - x(2))^2 + (1 - x(1))^2;
+```
+
+```{octave, echo=TRUE, eval=FALSE}
+function [c, ceq]=cam_constraints (x)
+c(1) = x(1)*x(2) + x(1) - x(2) + 1.5; 
+c(2) = 10 - x(1)*x(2); 
+ceq = [];
+end
+```
+
+## Solving constrained optimisation with MATLAB
+
+Then we solve the problem doing:
+
+```{octave, echo=TRUE, eval=FALSE}
+lb = [0; 0];
+ub = [1; 13];
+nonlcon = @cam_constraints;
+fun = @cam_function;
+options = optimoptions('ga', 
+'ConstraintTolerance', 1e-6, 'PlotFcn', 'gaplotbestf')
+[x, fval, exitflag, output] = 
+ga(fun, 2, [],[],[],[], lb, ub, nonlcon, options)
+```
+
+You will find the scripts in the **cam** folder in the **examples** folder.
+
+## Performance of the R implementation
+
+```{r, message=FALSE}
+f <- function(x)
+{ 100 * (x[1]^2 - x[2])^2 + (1 - x[1])^2 }
+
+c1 <- function(x) 
+{ x[1]*x[2] + x[1] - x[2] + 1.5 }
+
+c2 <- function(x) 
+{ 10 - x[1]*x[2] }
+
+fitness <- function(x) 
+{ 
+  f <- -f(x)                         # we need to maximise -f(x)
+  pen <- sqrt(.Machine$double.xmax)  # penalty term
+  penalty1 <- max(c1(x),0)*pen       # penalisation for 1st inequality constraint
+  penalty2 <- max(c2(x),0)*pen       # penalisation for 2nd inequality constraint
+  f - penalty1 - penalty2            # fitness function value
+}
+
+
+ga.constrained <- ga("real-valued", fitness = fitness, 
+         lower = c(0,0), upper = c(1,13),
+         maxiter = 1000, run = 200, seed = 123)
+plot(ga.constrained)
+```
 
 
