@@ -1,5 +1,5 @@
 # optimization
 
-Introduction to optimization algorithms and applications
+Introduction to optimization algorithms.
 
-At the moment, you can find an introduction to genetic algorithms using R in the **GA** folder
+At the moment, you can find an introduction to genetic algorithms (GA) using R and MATLAB in the **GA** folder.

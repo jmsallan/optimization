@@ -1,0 +1,219 @@
+---
+title: "Solving the knapsack problem with genetic algorithm"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The knapsack problem
+
+Given a set of $n$ objects of weight $w_i$ and utility $u_i$, select the objects that can be packed in a container of maximum capability $W$ maximizing the total utility of selected items.
+
+This problem allows a linear programming formulation, with binaries $x_i$
+equal to one if item i is selected. The objective function:
+
+$\text{MAX}\ z= \displaystyle\sum_{i=1}^n u_i x_i$
+
+subject to:
+
+$\displaystyle\sum_{i=1}^n w_i x_i \leq W$
+
+## Defining test instances
+
+To test the algorithm, we define first a function that generates instances of the knapsack problem. It is based in recommendations of:
+
+Pisinger, D. (2005). Where are the hard knapsack problems?. *Computers & Operations Research*, 32(9), 2271-2284.
+
+To be a hards knapsack problem, the quotient between utility and weigh should be similar for all objects We build a function to generate instances of a given `size`:
+
+```{r KP instances function}
+KPInstanceGen <- function(R, size, h){
+  w <- sample(1:R, size, replace=TRUE)
+  u <- sapply(1:size, function(x) sample((w[x] + R/10 - R/500):(w[x] + R/10 + R/500), 1))
+  W <- round(h/(101)*sum(w))
+  return(list(w=w,u=u,W=W))
+}
+```
+
+Every instance is stored as a list containing the weights `w`, utilities `u` and knapsack capacity `W`. 
+
+## KP optimum with linear programming
+
+In the case of the KP, we can use the linear programming formulation to obtain the optimal solution. This function returns the optimal solution `sol` and the value of objective function `obj` of a KP problem:
+
+```{r LPKP}
+LPKP <- function(KPdata){
+  library(Rglpk)
+  n <- length(KPdata$u)
+  obj <- KPdata$u
+  mat <- matrix(KPdata$w, nrow=1)
+  types <- rep("B", n)
+  sol.lp <- Rglpk_solve_LP(obj=obj, mat=mat,  dir="<=", rhs=KPdata$W, types=types, max = TRUE)
+  return(list(sol = sol.lp$solution, obj = sol.lp$optimum))
+}
+```
+
+
+## Defining a set of instances
+
+Let's obtain a set of instances, which wil be stored in the `instances` list:
+
+```{r, echo=TRUE}
+set.seed(1313) #this seed fixes the rest of the experiment
+p <- 10
+n <- 100
+instances <- lapply(1:p, function(x) KPInstanceGen(100, n, 40))
+```
+
+We have generated `r p` instances of `r n` elements each. The first instance is:
+
+```{r}
+instances[[1]]
+```
+
+## Obtaining the optimum with linear programming
+
+We obtain the optimum of all instances with linear programming doing:
+
+```{r, message=FALSE}
+optimum.instances <- lapply(instances, LPKP)
+```
+
+The objective function value in the optimum for each element is:
+
+```{r}
+of.optimum.instances <- sapply(optimum.instances, function(x) x$obj)
+of.optimum.instances
+```
+
+## Applying the GA to instances (default values)
+
+As a possible solution of the knapsack problem can be encoded as a string of $n$ bits, being bit $i$ equal to one if item $i$ is included, we can use a **binary encoding** for building a genetic algorithm.
+
+Let's solve each instance with genetic algorithm using the **default** parameter values. Individuals with total weight exceeding `W` are assigned a very negative fitness value of `r -.Machine$double.xmax`.
+
+
+```{r, message=FALSE}
+library(GA)
+ga.instances <- list()
+for(i in 1:p){
+  
+  FitnessKP <- function(sol){
+  instance <<- instances[[i]]
+  if(sum(instance$w*sol) <=instance$W) fit <- sum(instance$u*sol)
+  else fit <- -.Machine$double.xmax
+  return(fit)
+}
+
+ga.instances[[i]] <- ga(type = "binary", fitness = FitnessKP, nBits = n, seed=1111)
+}
+```
+
+Let's compare the results of the default GA with the optimum:
+
+```{r}
+of.defaultga <- sapply(ga.instances, function(x) x@fitnessValue)
+results <- data.frame(optimum=of.optimum.instances, defaultga=of.defaultga)
+results
+```
+
+The results of the default GA are very poor. Let's see if we can improve them widening the search space in two ways:
+
+- increasing **population size**.
+- increasing **probability of applying mutation**.
+
+## Increase of population size
+
+Let's increase population size from 50 (the default) to 100.
+
+```{r}
+ga.instances100 <- list()
+for(i in 1:p){
+  
+  FitnessKP <- function(sol){
+  instance <<- instances[[i]]
+  if(sum(instance$w*sol) <=instance$W) fit <- sum(instance$u*sol)
+  else fit <- -.Machine$double.xmax
+  return(fit)
+}
+
+ga.instances100[[i]] <- ga(type = "binary", fitness = FitnessKP, popSize = 100, nBits = n, seed=1111)
+}
+```
+
+```{r}
+results$gapop100 <- sapply(ga.instances100, function(x) x@fitnessValue)
+results
+```
+
+## Increasing mutation rate
+
+Let's see what can we achieve increasing mutation rate from 0.1 (the default) to 0.4:
+
+```{r}
+ga.instances04 <- list()
+for(i in 1:p){
+  
+  FitnessKP <- function(sol){
+  instance <<- instances[[i]]
+  if(sum(instance$w*sol) <=instance$W) fit <- sum(instance$u*sol)
+  else fit <- -.Machine$double.xmax
+  return(fit)
+}
+
+ga.instances04[[i]] <- ga(type = "binary", fitness = FitnessKP, pmutation = 0.4,  nBits = n, seed=1111)
+}
+```
+
+```{r}
+results$gaperm04 <- sapply(ga.instances04, function(x) x@fitnessValue)
+results
+```
+
+## Increasing population size **and** mutation rate
+
+Let's see what happens if we combine both effects:
+
+```{r}
+ga.instancescomb <- list()
+for(i in 1:p){
+  
+  FitnessKP <- function(sol){
+  instance <<- instances[[i]]
+  if(sum(instance$w*sol) <=instance$W) fit <- sum(instance$u*sol)
+  else fit <- -.Machine$double.xmax
+  return(fit)
+}
+
+ga.instancescomb[[i]] <- ga(type = "binary", fitness = FitnessKP, popSize = 100, pmutation = 0.4,  nBits = n, seed=1111)
+}
+```
+
+```{r}
+results$gacomb <- sapply(ga.instancescomb, function(x) x@fitnessValue)
+results
+```
+
+
+## Assesing the effect of population size and mutation rate
+
+What we have just done is a **$2^2$ factorial design**. Let's evaluate the effect of each factor on performance:
+
+```{r}
+performance <- c(results$defaultga, results$gapop100, results$gaperm04, results$gacomb)
+pop <- c(rep(-1,10), rep(1,10), rep(-1,10), rep(1,10))
+perm <- c(rep(-1,20), rep(1,20))
+comb <- c(rep(-1,30), rep(1,10))
+factor <- data.frame(performance=performance, pop=pop, perm=perm, comb=comb)
+summary(lm(factor))
+```
+
+The conclusion is that, for this particular problem, **increasing population size is effective to increase algorithm performance, while increasing mutation rate is not**.
+
+We could extend the experiment by introducing other selection, crossover and mutation operators for this problem. The defaults used here have been:
+
+- Selection: linear-rank selection.
+- Crossover: single-point crossover.
+- Mutation: uniform random mutation.
