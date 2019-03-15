@@ -26,9 +26,9 @@ To test the algorithm, we define first a function that generates instances of th
 
 Pisinger, D. (2005). Where are the hard knapsack problems?. *Computers & Operations Research*, 32(9), 2271-2284.
 
-To be a hards knapsack problem, the quotient between utility and weigh should be similar for all objects We build a function to generate instances of a given `size`:
+To be a hard knapsack problem, the quotient between utility and weigh should be similar for all objects We build a function to generate instances of a given `size`:
 
-```{r KP instances function}
+```{r KP instances function, cache=TRUE}
 KPInstanceGen <- function(R, size, h){
   w <- sample(1:R, size, replace=TRUE)
   u <- sapply(1:size, function(x) sample((w[x] + R/10 - R/500):(w[x] + R/10 + R/500), 1))
@@ -43,7 +43,7 @@ Every instance is stored as a list containing the weights `w`, utilities `u` and
 
 In the case of the KP, we can use the linear programming formulation to obtain the optimal solution. This function returns the optimal solution `sol` and the value of objective function `obj` of a KP problem:
 
-```{r LPKP}
+```{r LPKP, cache=TRUE}
 LPKP <- function(KPdata){
   library(Rglpk)
   n <- length(KPdata$u)
@@ -60,7 +60,7 @@ LPKP <- function(KPdata){
 
 Let's obtain a set of instances, which wil be stored in the `instances` list:
 
-```{r, echo=TRUE}
+```{r, echo=TRUE, cache=TRUE}
 set.seed(1313) #this seed fixes the rest of the experiment
 p <- 10
 n <- 100
@@ -77,13 +77,13 @@ instances[[1]]
 
 We obtain the optimum of all instances with linear programming doing:
 
-```{r, message=FALSE}
+```{r, message=FALSE, cache=TRUE}
 optimum.instances <- lapply(instances, LPKP)
 ```
 
 The objective function value in the optimum for each element is:
 
-```{r}
+```{r, cache=TRUE}
 of.optimum.instances <- sapply(optimum.instances, function(x) x$obj)
 of.optimum.instances
 ```
@@ -95,7 +95,7 @@ As a possible solution of the knapsack problem can be encoded as a string of $n$
 Let's solve each instance with genetic algorithm using the **default** parameter values. Individuals with total weight exceeding `W` are assigned a very negative fitness value of `r -.Machine$double.xmax`.
 
 
-```{r, message=FALSE}
+```{r,cache=TRUE, message=FALSE}
 library(GA)
 ga.instances <- list()
 for(i in 1:p){
@@ -113,7 +113,7 @@ ga.instances[[i]] <- ga(type = "binary", fitness = FitnessKP, nBits = n, seed=11
 
 Let's compare the results of the default GA with the optimum:
 
-```{r}
+```{r, cache=TRUE}
 of.defaultga <- sapply(ga.instances, function(x) x@fitnessValue)
 results <- data.frame(optimum=of.optimum.instances, defaultga=of.defaultga)
 results
@@ -128,7 +128,7 @@ The results of the default GA are very poor. Let's see if we can improve them wi
 
 Let's increase population size from 50 (the default) to 100.
 
-```{r}
+```{r, cache=TRUE}
 ga.instances100 <- list()
 for(i in 1:p){
   
@@ -143,7 +143,7 @@ ga.instances100[[i]] <- ga(type = "binary", fitness = FitnessKP, popSize = 100, 
 }
 ```
 
-```{r}
+```{r, cache=TRUE}
 results$gapop100 <- sapply(ga.instances100, function(x) x@fitnessValue)
 results
 ```
@@ -152,7 +152,7 @@ results
 
 Let's see what can we achieve increasing mutation rate from 0.1 (the default) to 0.4:
 
-```{r}
+```{r, cache=TRUE}
 ga.instances04 <- list()
 for(i in 1:p){
   
@@ -167,7 +167,7 @@ ga.instances04[[i]] <- ga(type = "binary", fitness = FitnessKP, pmutation = 0.4,
 }
 ```
 
-```{r}
+```{r, cache=TRUE}
 results$gaperm04 <- sapply(ga.instances04, function(x) x@fitnessValue)
 results
 ```
@@ -176,7 +176,7 @@ results
 
 Let's see what happens if we combine both effects:
 
-```{r}
+```{r, cache=TRUE}
 ga.instancescomb <- list()
 for(i in 1:p){
   
@@ -191,7 +191,7 @@ ga.instancescomb[[i]] <- ga(type = "binary", fitness = FitnessKP, popSize = 100,
 }
 ```
 
-```{r}
+```{r, cache=TRUE}
 results$gacomb <- sapply(ga.instancescomb, function(x) x@fitnessValue)
 results
 ```
@@ -201,11 +201,11 @@ results
 
 What we have just done is a **$2^2$ factorial design**. Let's evaluate the effect of each factor on performance:
 
-```{r}
+```{r, cache=TRUE}
 performance <- c(results$defaultga, results$gapop100, results$gaperm04, results$gacomb)
-pop <- c(rep(-1,10), rep(1,10), rep(-1,10), rep(1,10))
-perm <- c(rep(-1,20), rep(1,20))
-comb <- c(rep(-1,30), rep(1,10))
+pop <- c(rep(-1,p), rep(1,p), rep(-1,p), rep(1,p))
+perm <- c(rep(-1,2*p), rep(1,2*p))
+comb <- c(rep(-1,3*p), rep(1,p))
 factor <- data.frame(performance=performance, pop=pop, perm=perm, comb=comb)
 summary(lm(factor))
 ```

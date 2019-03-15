@@ -200,7 +200,7 @@ $(document).ready(function () {
 <h2>Defining test instances</h2>
 <p>To test the algorithm, we define first a function that generates instances of the knapsack problem. It is based in recommendations of:</p>
 <p>Pisinger, D. (2005). Where are the hard knapsack problems?. <em>Computers &amp; Operations Research</em>, 32(9), 2271-2284.</p>
-<p>To be a hards knapsack problem, the quotient between utility and weigh should be similar for all objects We build a function to generate instances of a given <code>size</code>:</p>
+<p>To be a hard knapsack problem, the quotient between utility and weigh should be similar for all objects We build a function to generate instances of a given <code>size</code>:</p>
 <pre class="r"><code>KPInstanceGen &lt;- function(R, size, h){
   w &lt;- sample(1:R, size, replace=TRUE)
   u &lt;- sapply(1:size, function(x) sample((w[x] + R/10 - R/500):(w[x] + R/10 + R/500), 1))
@@ -387,9 +387,9 @@ results</code></pre>
 <h2>Assesing the effect of population size and mutation rate</h2>
 <p>What we have just done is a <strong><span class="math inline">\(2^2\)</span> factorial design</strong>. Let’s evaluate the effect of each factor on performance:</p>
 <pre class="r"><code>performance &lt;- c(results$defaultga, results$gapop100, results$gaperm04, results$gacomb)
-pop &lt;- c(rep(-1,10), rep(1,10), rep(-1,10), rep(1,10))
-perm &lt;- c(rep(-1,20), rep(1,20))
-comb &lt;- c(rep(-1,30), rep(1,10))
+pop &lt;- c(rep(-1,p), rep(1,p), rep(-1,p), rep(1,p))
+perm &lt;- c(rep(-1,2*p), rep(1,2*p))
+comb &lt;- c(rep(-1,3*p), rep(1,p))
 factor &lt;- data.frame(performance=performance, pop=pop, perm=perm, comb=comb)
 summary(lm(factor))</code></pre>
 <pre><code>## 
