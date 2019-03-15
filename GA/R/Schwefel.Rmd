@@ -1,0 +1,127 @@
+---
+title: "Schwefel"
+output: html_document
+---
+
+## The Schwefel function
+
+The Schwefel function of $d$ dimensions is defined as:
+
+$f(x)= 418.982d - \displaystyle\sum_{i=0}^d x_isin(\sqrt{|x_i|})$
+
+Usually the function is evaluated between the bounds $-500 \leq x_i \leq 500$. Here is a plot of the function for $d=2$:
+
+```{r, message=FALSE, echo=FALSE}
+library(GA)
+Schwefel <- function(x1, x2){
+  418.9829*2 - x1*sin(sqrt(abs(x1))) + x2*sin(sqrt(abs(x2)))
+}
+
+x1 <- x2 <- seq(-500, 500, by = 10)
+
+f <- outer(x1, x2, Schwefel)
+persp3D(x1, x2, f, theta = 50, phi = 20, col.palette = bl2gr.colors)
+```
+
+It can be seen that the function has a lot of local minima and then it is hard to optimize. The optimum is found when all decision variables are equal to 418.9829. The value of the objective function at the optimum is zero.
+
+## Optimum with the default genetic algorithm
+
+Let's run a genetic algorithm with MATLAB defaults, but allowing 1500 generations to run.
+
+```{r, cache=TRUE}
+schwef <- function(xx)
+{
+  d <- length(xx)
+  sum <- sum(xx*sin(sqrt(abs(xx))))
+  y <- 418.9829*d - sum
+  return(y)
+}
+
+nvars <- 30
+
+f.schwef <- function(xx) -schwef(xx)
+
+ga.schwef <- ga("real-valued", 
+                fitness = f.schwef, 
+                lower=rep(-500,30), upper=rep(500,30), 
+                popSize=200, 
+                maxiter=1500, run=300,
+                mutation=gareal_nraMutation, 
+                seed=1313)
+
+summary(ga.schwef)
+```
+
+Note that the value of the objective function is quite far from the optimum. Let's try several alternative strategies.
+
+## Hybrid genetic algorithm
+
+Let's see what happens if we activate local search maxing `optim=TRUE`. In the `optimArgs` section we have set that every generation the algorithm performs local search with a probability 0.2. The pressel argument is set to default, indicating that the algorithm tends to select for local search solutions with good fit:
+
+```{r, cache=TRUE}
+ga.schwef.optim1 <- ga("real-valued", 
+                       fitness = f.schwef, 
+                       lower=rep(-500,30), upper=rep(500,30), 
+                       popSize=200, 
+                       maxiter=1500, run=300, 
+                       mutation=gareal_nraMutation, optim=TRUE,
+optimArgs = list(method = "L-BFGS-B", 
+                    poptim = 0.2,
+                    pressel = 0.5,
+                    control = list(fnscale = -1, maxit = 100)),
+seed=1313)
+
+summary(ga.schwef.optim1)
+```
+
+We are getting to the same local optimum, although a bit faster.
+
+```{r, cache=TRUE, echo=FALSE}
+plot(ga.schwef)
+plot(ga.schwef.optim1)
+```
+
+## Islands genetic algorithm
+
+We can specify a islands model of genetic algorithms with the `gaisl` function. We have set a migration rate (proportion of individuals that undergo migration between islands) of 0.2 and a migration interval (number of iterations at which exchange of individuals takes place) of 50.
+
+```{r, cache=TRUE}
+t1 <- Sys.time()
+ga.schwef.islands <- gaisl("real-valued", 
+                           fitness = f.schwef, 
+                           lower=rep(-500,30), upper=rep(500,30),
+                           popSize=800, 
+                           maxiter=1500, 
+                           run=300, 
+                           mutation=gareal_nraMutation, 
+                           numIslands = 4, 
+                           migrationRate = 0.2, 
+                           migrationInterval = 10, 
+                           seed = 1313)
+
+t2 <- Sys.time()
+t2-t1
+summary(ga.schwef.islands)
+```
+
+```{r, echo=FALSE}
+plot(ga.schwef.islands)
+```
+
+Let's compare the performance of this implementation with a plan ga with equal population size:
+
+```{r, cache=TRUE}
+t3 <- Sys.time()
+ga.schwef800 <- ga("real-valued", 
+                fitness = f.schwef, 
+                lower=rep(-500,30), upper=rep(500,30), 
+                popSize=800, 
+                maxiter=1500, run=300,
+                mutation=gareal_nraMutation, 
+                seed=1313)
+t4 <- Sys.time()
+t4-t3
+summary(ga.schwef800)
+```
+

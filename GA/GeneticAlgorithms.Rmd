@@ -643,35 +643,31 @@ ga.constrained <- ga("real-valued", fitness = fitness,
 plot(ga.constrained)
 ```
 
-# Influence of parameters on performance
+# Influence of parameters and operators on performance
 
-## Influece of parameters on performance
+## Influence of parameters and operators on performance
 
-If the default settings do not work well, we can try to improve performance modifying genetic algorithm parameters:
+If defaults do not work well, we can try to improve performance modifying genetic algorithm **parameters**:
 
-- Fitness function
 - Population parameters: starting population, size
 - Mutation and probability of performing mutation
 
-## Fitness function
+We can also try to explore out of the default **operators**:
 
-The most important element for a genetic algorithm.
-
-Most of the computational cost is computing the fitness function to each element of the population.
-
-Fitness function quantifies the quality of a population member (how close is to optimum):
-
-- penalties for constraints.
-- adapt to maximisation / minimisation.
+- selection
+- crossover
+- mutation
+- elitism
+- convergence
 
 ## Population
 
-The population helps to exploration of candidate solutions:
+The population helps the **exploration** of the search space:
 
-- Small population: small search space, low time complexity, may need more generations to converge.
-- Large population: widens search space, high time complexity, may need less generations to converge.
+- **Small population:** small search space, low time complexity, may need more generations to converge.
+- **Large population:** widens search space, high time complexity, may need less generations to converge.
 
-Seeding of initial population: including good solutions (e.g., obtained by local search).
+**Seeding** of initial population: including good solutions (e.g., obtained by local search).
 
 ## Mutation
 
@@ -685,19 +681,30 @@ We can test variations on the probability of applying mutation $p_{mut}$:
 
 Evaluation of operators can be performed with **experimental design**: see vignette **KPwithGApackage**. Some of this implementations are not supported by stanadard R or MATLAB functions.
 
-## Practice: Schwebel function
+## Practice: Schwefel function
 
-Consider the **Schwebel function**, defined in:
+The **Schwefel function**: {https://www.sfu.ca/~ssurjano/schwef.html}
 
-{https://www.sfu.ca/~ssurjano/schwef.html}
+```{r}
+Schwefel <- function(x1, x2){
+  418.9829*2 - x1*sin(sqrt(abs(x1))) + x2*sin(sqrt(abs(x2)))
+}
 
-Perform a genetic algorithm implementation with the standard options, and try to improve the result setting new values to parameters and operators.
+x1 <- x2 <- seq(-500, 500, by = 10)
+
+f <- outer(x1, x2, Schwefel)
+persp3D(x1, x2, f, theta = 50, phi = 20, col.palette = bl2gr.colors)
+```
+
+## Practice: Schwefel function
+
+Perform an implementation of the genetic of the **Schwefel function of 30 variables** algorithm with the standard options, and try to improve the result setting new values of parameters or operators.
 
 # Genetic algorithm extensions
 
 ## Hybrid genetic algorithms
 
-Consist of combining a genetic algorithm with a local search optimization algorithm-
+Consist of combining a **genetic algorithm** with a **local search** optimization algorithm.
 
 Receives several names in literature:
 
@@ -710,25 +717,135 @@ Receives several names in literature:
 
 The local search to use may depend on the function to optimize:
 
-- Quasi Newton: **@fminunc** function in MATLAB.
-- Simulated annealing.
-- Tabu search.
+- MATLAB (real-valued representation):
+    - **@fminunc** for unconstrained optimization (e.g., quasi Newton).
+    - **@fmincon** for constrainted optimization (e.g., interrior point).
+- Simulated annealing (SA).
+- Tabu search (SA).
 
 SA and TS are available for binary encoding and permutative representations (e.g., flowshop or tabu search problems).
 
 ## Hybrid genetic algorithms implementation
 
-There are several ways of combining genetic algorithm and local search:
+There are several ways of combining genetic algorithms and local search:
 
-- The MATLAB way: the local search function runs after the genetic algorithm termination.
+- **The MATLAB way:** the local search function runs after the genetic algorithm termination.
 - Performing a local search optimization to all the population every fixed number of generations.
 - Performing local search with a probability that can depend on fitness (optimize the best individuals).
 
-Some implementations can be too time consuming.
 
 ## Hybrid genetic algorithms in MATLAB
 
-Let's consider the Rastrigin function with 30 variables.
+**Unconstrained optimization:** let's consider the **Rastrigin function with 30 variables**.
 
-Compare results with and without hybrid GA: scripts **rastrigin30.m** and **rastrigin30_hybrid.m**
+Compare results with and without hybrid GA scripts:
 
+- **rastrigin30.m** 
+- **rastrigin30_hybrid.m**
+
+## Hybrid genetic algorithms in MATLAB
+
+**Constrained optimization:** let's consider the Rosenbrock function:
+
+$(1-x)^2+100*(y-x^2)^2$
+
+on the unit disk:
+
+$x^2 + y^2 \leq 1$
+
+See scripts:
+
+- **rosenbrock.m** 
+- **rosenbrock_constraints2.m** 
+- **rosenbrock_ga2.m**
+- **rosenbrock_fmincon.m**
+
+## Practice: hybrid genetic algorithms for the Schwefel function
+
+Our aim is solving the **Schwefel function of 3 variables constrained to an sphere of radius 200**.
+
+Report solution obtained and number of function evaluations:
+
+- solving the problem with **fmincon** solver and **interior-point** algorithm.
+- solving the problem with defaults of **ga** solver.
+- solving the problem with with hybrid genetic algorithm with **fmincon** and **interior-point** as local search solvers.
+
+Set **rng default;** in all cases.
+
+## Islands model genetic algorithm
+
+```{r, out.width='70%', fig.align='center', fig.cap='Darwin finches'}
+knitr::include_graphics('images/Finches.jpg')
+```
+
+## Islands model genetic algorithm
+
+Instead of having one single population, the islands model maintains **several populations (islands)**.
+
+Every specific number of generations, **migration** takes place: each population is seeded with individuals of other populations.
+
+This model can be adequate to foster variation among populations with good solutions obtained in other exploitation processes.
+
+## Islands model genetic algorithm
+
+Other names that islands model has:
+
+- multi-island model.
+- migration model.
+
+This model can be adequate for parallel computing.
+
+## Islands model genetic algorithm
+
+Currently the islands model is not implemented in MATLAB: although there are some **Migration** options available, there is no advantage in using them.
+
+The **GA** package in R supports islands model and parallel computing. See **Schwefel** vignette for an example.
+
+# Conclusions
+
+## Conclusions
+
+The genetic algorithm is a metaheuristic useful in many optimitzation contexts:
+
+- Real-valued functions (real-value or binary (tradicional) encodings)-
+- Binary encodings.
+- Permutative encodings (flowshop problem, travelling salesman problem).
+
+Works with **unconstrianed** and **constrained** optimization.
+
+Genetic algorithms are a **brute-force** method: use it when you want high-quality solutions even with high computational cost (number of function evaluations, time spent).
+
+In MATLAB, implemented in the **ga** solver.
+
+For real-valued functions, try first **fminunc** or **fmincon** solvers.
+
+## Conclusions
+
+If algorithm performance is not good, you might want to go beyond solver defaults:
+
+- Increase population size (sometimes effective, but costly).
+- Increase mutation rate.
+
+Try different operators:
+
+- Selection
+- Crossover
+- Mutation
+- Elitism
+- Convergence
+
+Try alternative implementations:
+
+- Hybrid genetic algorithms
+- Islands model of genetic algorithms
+
+## Thanks for your attention
+
+Contact:
+
+Jose M Sallan
+mailto:jose.maria.sallan@upc.edu
+
+Materials available at:
+
+https://github.com/jmsallan/optimization
