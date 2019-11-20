@@ -66,7 +66,6 @@ What do we need to build a genetic algorithm?
     - **Binary encoding:** a bit string.
     - **Real value encoding:** the value itself.
     - **Permutative encoding:** a permutation of *n* elements.
-
 - Definition of **crossover**, **mutation** and **selection** operators. These operators work with the genotype of solutions.
 
 - A **fitness function** that help us assess how does a population member fit to the environment.
@@ -118,7 +117,6 @@ b <- list(c(0,0,0), c(0,0,1), c(0,1,0), c(0,1,1), c(1,0,0), c(1,0,1), c(1,1,0), 
 x <- sapply(b, function(x) renderBit(x, -10, 10))
 print(x, digits=3)
 ```
-
 
 ## Bit string representation
 
@@ -218,7 +216,7 @@ Some criteria for convergence (stopping):
 - There is no improvement of the fitness function in a number of iterations.
 - There is no variation in the last generation (all elements are equal).
 
-#Solving a standard GA
+#Solving GA using R
 
 ## A simple example
 
@@ -231,15 +229,7 @@ lbound <- -10; ubound <- 10
 curve(f, from = lbound, to = ubound, n = 1000)
 ```
 
-Let's use a binary encoding implementation.
-
-## The GA R package
-
-We will use the GA package of R, written by Luca Scrucca
-
-[Installing R and RStudio on Windows](https://youtu.be/GAGUDL-4aVw)
-
-[Installing R and RStudio on mac](https://youtu.be/1PsPfMaLWSk)
+We will solve this problem using the GA package of R, written by Luca Scrucca, usign binary encoding.
 
 ## Defining the fitness function (binary encoding)
 
@@ -269,6 +259,7 @@ install.packages("GA")
 
 Perform GA and store results in ``g01.stdbinary`` variable:
 
+
 ```{r, message=FALSE, echo=TRUE, cache=TRUE}
 library(GA)
 g01.stdbinary <- ga(type = "binary", fitness = f.stdbin,
@@ -286,7 +277,7 @@ g01.stdbinary@fitnessValue
 
 ## Performance (binary encoding)
 
-```{r, echo=TRUE, width='80%'}
+```{r, message=FALSE, width='80%'}
 plot(g01.stdbinary)
 ```
 
@@ -346,123 +337,12 @@ points(bin2real(g01.stdbinary@solution, -10, 10), g01.stdbinary@fitnessValue, pc
 
 ... but Gray (right) is faster than standard binary (left)
 
-```{r, out.height='60%'}
+```{r, out.height='60%', out.width='120%'}
 par(mfrow=c(1,2))
 plot(g01.stdbinary)
 plot(g01.gray)
 ```
 
-# Real-valued encoding
-
-## Real-valued encoding
-
-For problems having decision variables $\mathbf{x} \in \mathcal{R}^n$, the most natural encoding is the floating-point or real-valued encoding.
-
-In this encoding, the genotype is simply the phenotype (that is, the vector itself).
-
-## Crossover operators
-
-The most used crossover operators are:
-
-- Vector-level:
-    - Whole arithmetic crossover
-- Variable-level:
-    - Local arithmetic crossover
-    - Blend crossover
-    - Uniform crossover
-
-## Crossover operators
-
-**Whole arithmetic crossover:** from two parents $\mathbf{x}^1$ and $\mathbf{x}^2$ we can obtain two offspring:
-
-$\alpha \mathbf{x}^1 +  (1- \alpha) \mathbf{x}^2$
-
-$(1- \alpha) \mathbf{x}^1 + \alpha \mathbf{x}^2$
-
-with $\alpha \in [0,1]$
-
-**Local arithmetic crossover:** we perform a similar crossover at the variable level.
-
-$\alpha x_i^1 +  (1- \alpha) x_i^2$
-
-$(1- \alpha) x_i^1 + \alpha x_i^2$
-
-again with $\alpha \in [0,1]$
-
-## Crossover operators
-
-**Blend crossover:** we construct the offspring selecting each variable randomly from the interval:
-
-$[x_i^1 - \alpha(x_i^2 - x_i^1), x_2^1 + \alpha(x_i^2 - x_i^1)]$
-
-with $x_i^2 > x_i^1$.
-
-Usually $\alpha=0.5$ yields good results. If necessary, variables of offspring should be adjusted to upper or lower bounds.
-
-If $\alpha=0$ we have **uniform crossover**.
-
-## Mutation operators
-
-The most usual mutation operator is to pick a value within a given radius of the population member.
-
-It is frequent to reduce the radius as generations go (nonuniform mutation), similarly to genetic algorithm.
-
-## Genetic algorithm (real-valued encoding)
-
-```{r, echo=TRUE, cache=TRUE}
-f <- function(x)  (x^2+x)*cos(x)
-lbound <- -10; ubound <- 10
-g01.real <- ga(type = "real-valued", fitness = f, 
-lower = lbound, upper = ubound, seed=1313)
-```
-
-This implementation also finds the optimum.
-
-## Performance (real-valued encoding)
-
-```{r, echo=TRUE}
-plot(g01.real)
-```
-
-## The Rastrigin function
-
-The **Rastrigin function** is a performance test for optimisation algorithms, as it has a large search space and many local minima. For two variables:
-
-$f = 20 + x_1^2 + x_2^2 - 10(cos2\pi x_1 + cos2\pi x_2)$
-
-with $x_i \in [-5.12, 5.12]$
-
-Note that this is a minimization problem, so we must use $-f$ as fitness function.
-
-## The Rastrigin function
-
-```{r}
-Rastrigin <- function(x1, x2)
-  20 + x1^2 + x2^2 - 10*(cos(2*pi*x1) + cos(2*pi*x2))
-
-x1 <- x2 <- seq(-5.12, 5.12, by = 0.1)
-f <- outer(x1, x2, Rastrigin)
-persp3D(x1, x2, f, theta = 50, phi = 20, col.palette = bl2gr.colors)
-```
-
-## Solving the Rastrigin problem
-
-```{r, echo=TRUE, cache=TRUE}
-ga.rastrigin <- ga(type = "real-valued", 
-         fitness =  function(x) -Rastrigin(x[1], x[2]),
-         lower = c(-5.12, -5.12), upper = c(5.12, 5.12), 
-         popSize = 50, maxiter = 1000, run = 100, seed=1313)
-```
-
-Set two convergence criteria: maximum number of generations (1000) and maximum number of runs without improvement (100).
-
-The GA finds the optimum $(0,0)$.
-
-## Performance (Rastrigin problem)
-
-```{r}
-plot(ga.rastrigin)
-```
 
 # Using MATLAB for genetic algorithms
 
@@ -537,21 +417,6 @@ You can find reference of genetic algorithms in MATLAB in the following links:
 
 [options](https://la.mathworks.com/help/gads/genetic-algorithm-options.html)
 
-## Minimising the Rastrigin function with MATLAB
-
-In MATLAB we can access the Rastrigin function with **@rastriginsfcn**
-
-**Exercise:** find the (unrestricted) minimum of the Rastrigin function with genetic algorithm in MATLAB with the following parameters:
-
-- Maximum number of generations: 1000.
-- Maximum number of runs without improvement (stalls): 300.
-- Plot the evolution of best value and mean value of generation **gaplotbestf**.
-
-## Solving a maximisation problem
-
-Reconsider the problem of maximising $(x^2 + x)cos(x)$ in the interval $-10 \leq x \leq 10$.
-
-Write a script with the fitness function and other script with the specification of the **ga** function, which plots algorithm evolution.
 
 # Constrained optimisation
 
@@ -627,7 +492,7 @@ You will find the scripts in the **cam** folder in the **examples** folder.
 
 ## Performance of the R implementation
 
-```{r, message=FALSE, cache=TRUE}
+```{r, message=FALSE,cache=TRUE}
 f <- function(x)
 { 100 * (x[1]^2 - x[2])^2 + (1 - x[1])^2 }
 
@@ -691,25 +556,6 @@ We can test variations on the probability of applying mutation $p_{mut}$:
 
 Evaluation of operators can be performed with **experimental design**: see vignette **KPwithGApackage**. Some of this implementations are not supported by stanadard R or MATLAB functions.
 
-## Practice: Schwefel function
-
-The **Schwefel function**: {https://www.sfu.ca/~ssurjano/schwef.html}
-
-```{r}
-Schwefel <- function(x1, x2){
-  418.9829*2 - x1*sin(sqrt(abs(x1))) + x2*sin(sqrt(abs(x2)))
-}
-
-x1 <- x2 <- seq(-500, 500, by = 10)
-
-f <- outer(x1, x2, Schwefel)
-persp3D(x1, x2, f, theta = 50, phi = 20, col.palette = bl2gr.colors)
-```
-
-## Practice: Schwefel function
-
-Perform an implementation of the genetic  algorithm with the standard options for the **Schwefel function of 30 variables**, and try to improve the result stting new values of parameters or operators.
-
 # Genetic algorithm extensions
 
 ## Hybrid genetic algorithms
@@ -746,41 +592,12 @@ There are several ways of combining genetic algorithms and local search:
 
 ## Hybrid genetic algorithms in MATLAB
 
-**Unconstrained optimization:** let's consider the **Rastrigin function with 30 variables**.
-
-Compare results with and without hybrid GA scripts:
-
-- **rastrigin30.m** 
-- **rastrigin30_hybrid.m**
-
-## Hybrid genetic algorithms in MATLAB
-
-**Constrained optimization:** let's consider the Rosenbrock function:
-
-$(1-x)^2+100*(y-x^2)^2$
-
-on the unit disk:
-
-$x^2 + y^2 \leq 1$
-
-See scripts:
+See scripts in the documentation:
 
 - **rosenbrock.m** 
 - **rosenbrock_constraints2.m** 
 - **rosenbrock_ga2.m**
 - **rosenbrock_fmincon.m**
-
-## Practice: hybrid genetic algorithms for the Schwefel function
-
-Our aim is solving the **Schwefel function of 3 variables constrained to an sphere of radius 200**.
-
-Report solution obtained and number of function evaluations:
-
-- solving the problem with **fmincon** solver and **interior-point** algorithm.
-- solving the problem with defaults of **ga** solver.
-- solving the problem with hybrid genetic algorithm with **fmincon** and **interior-point** as local search solvers.
-
-Set **rng default;** in all cases.
 
 ## Islands model genetic algorithm
 
