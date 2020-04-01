@@ -1,0 +1,158 @@
+---
+title: "Tuning a simulated annealing"
+author: "Jose M Sallan"
+date: "23/03/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Tuning a simulated annealing
+
+In this document we will see how to define an computational experiment to tune a simulated annealing for the permutative flow shop problem. The algorithm is embedded in the `SAFS` function of the `combheuristics` package. This package has been built to illustrate the contents of this course, and can be installed through GitHub. To do so, we first need to install `devtools`:
+
+```{r, eval=FALSE}
+install.packages("devtools")
+library(devtools)
+install_github("jmsallan/combheuristics")
+```
+
+Tou only need to the installation process once, or when the package has to be updated. We can access to package contents doing:
+
+```{r}
+library(combheuristics)
+```
+
+The parameters to tune are:
+
+* The number of iterations, controlled by `Tmax`. Here we will check two values: 5000 and 10000.
+* The `mu` parameter in the expression regulating the probability of accepting a solution. Here we will check the following values: 500, 1000, 5000 and 10000.
+* The neighbourhood definition operator `op`, which will take two values: `swap` and `insertion`.
+
+# Experimental design
+
+We will refer to the **Experimental evaluation of heuristics** to take advice about how to carry out the experimental design. The **evaluation context** of the design can be defined as:
+
+* A **research** goal, as we are not adapting the algorithm to a specific context.
+* The problem to solve is scheduling, so it is a **planning** application.
+* Simulated annealing is in its later stages of definition, but here we will act as if it were in its **early stage**.
+
+We would need to make the computational experiment using a set of instances representing all characteristics of the problem. The combheuristics package includes the Taillard flow shop instances as `Taillard_FS`, and ideally we could use these instances, as they cover a wide range of values of number of machines `m` and number of tasks `n`. To make this problem not too large, we will use only an **instance** here:
+
+```{r}
+set.seed(2020)
+instance <- matrix(sample(10:90, 100, replace = TRUE), 5, 20)
+```
+
+As the algorithm is a randomized procedure, it can give different outputs when run with the same parameters. To control that, we will need to do **multiple runs** for each evaluation.
+
+We need to define a performance measurement. From previous experiments, we know that the best (lower) value obtained so far is 1238. This value was obtained with a iterative local search metaheuristic. So here we will use a heuristic to best ratio as performance measurement:
+
+\[
+\frac{z - z_{lower}}{z_{lower}}
+lib\]
+
+# Defining the experimental grid
+
+A useful funciton to define an experiment is `expand.grid`. It creates a data frame from all combinations of the supplied vectors or factors. Let's see hos it works with a small example:
+
+```{r}
+expand.grid(op=c("insertion", "swap"), mu=c(500, 1000, 5000))
+```
+
+The grid for the experiment will be larger. Note that we nave added a runs variable, to run ten times each combination of parameters:
+
+```{r}
+parameter_values <- expand.grid(run=1:10, Tmax=c(5000, 10000), mu=c(500, 1000, 5000, 10000), op=c("swap", "insertion"))
+nrow(parameter_values)
+```
+
+# Running the experiment
+
+We will use the `apply` function to run the experiment for each row of the experimental grid data frame. As each row of the data frame contains numeric and character parameters, all them will be coerced to character when passed to `apply´. So we will need to turn them to numeric again with `as.numeric`. Then we need to build a function to run the experiment, keeping in mind in which column is stored each parameter:
+
+```{r}
+names(parameter_values)
+```
+
+The function takes an `instance`, an initial solution `inisol`, the `lower` value (in fact an upper bound of the solution) found and `params`, which is a row of `parameter_values`:
+
+```{r}
+testSAFS <- function(instance, inisol, lower, params){
+  z <- SAFS(M=instance, inisol=inisol, Tmax=as.numeric(params[2]), mu=as.numeric(params[3]), op=params[4])$obj
+  fit <- (z-lower)/lower
+  return(fit)
+}
+```
+
+The starting solution can be obtained with the PalmerTrapezes function:
+
+```{r}
+palmer <- PalmerTrapezes(instance)$pal
+```
+
+
+Once all has been set up, the experiment is run with two lines of code:
+
+```{r, eval=FALSE}
+set.seed(2020)
+h2b <- apply(parameter_values, 1, function(x) testSAFS(instance, inisol=palmer, lower=1239, x))
+```
+
+Once the values for each experiment have been obtained, we build a results data frame with the same columns as parameter_values, and an additional column with the experiment results:
+
+```{r, eval=FALSE}
+results <- parameter_values
+results$h2b <- h2b
+```
+
+As running this experiment takes a long time, we have used a the `FineTuningSA2.R` script to run the code. The results are stored in a `resultsSA2.csv` file.
+
+# Results evaluation
+
+Let's read the results:
+
+```{r}
+results <- read.csv("resultsSA2.csv")
+head(results)
+```
+
+To examine the results obtained, we will use the `tidyverse` package. Among others, it includes:
+
+* The functions for data manipulation of the `tidyr` package.
+* The grammar of graphics visualisation of the `ggplot2` package.
+
+```{r}
+library(tidyverse)
+```
+
+
+We can obtain a synthesis of the obtained results at a glance ranking each combination of parameters according to the average value of h2b taken across the ten run. We will also get the standard deviation:
+
+```{r}
+results %>% group_by(Tmax, mu, op) %>% summarise(perf=mean(h2b), var=sd(h2b)) %>% arrange(perf)
+```
+
+Can be interesting separating the results for each value of `Tmax`:
+
+```{r}
+results %>% filter(Tmax==10000) %>% group_by(mu, op) %>% summarise(perf=mean(h2b), var=sd(h2b)) %>% arrange(perf)
+results %>% filter(Tmax==5000) %>% group_by(mu, op) %>% summarise(perf=mean(h2b), var=sd(h2b)) %>% arrange(perf)
+
+```
+
+Looks like the best choice here is `Tmax=10000` and `mu=5000`. This means that `Tmax=5000` is not large enough to get good results for this instance, and that we need a value of `mu` of around 50% of the value of Tmax. Remember that mu controlled the tradeoff between exploration and explotation in the simulated annealing, making explotation larger as `mu` increases. The insertion operator performs slightly better than the swap operator, but the difference is small and can depend on statistical fluctuations.
+
+We can also make a plot of the results for `Tmax=10000`.
+
+```{r}
+results %>% filter(Tmax==10000) %>% ggplot(aes(as.factor(mu), h2b)) + geom_boxplot() + facet_grid(. ~ op) + labs(title="Tuning of a SA for flow shop (Tmax=10000)", x="mu") + theme_bw()
+```
+
+Seeing the plot results, it looks like it is better to use the `swap` operator instead `insertion`, as it yields less variable results.

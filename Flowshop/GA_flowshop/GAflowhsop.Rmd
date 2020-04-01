@@ -1,0 +1,188 @@
+---
+title: "Solving flowshop with the GA package"
+author: "Jose M Sallan"
+date: "01/04/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The GA package for genetic algorithms
+
+We will use the `GA` package, written by Luca Scrocca to implement
+genetic algorithms in the R environment. A useful vignette can be found in:
+
+https://cran.r-project.org/web/packages/GA/vignettes/GA.html
+
+```{r, message=FALSE}
+library(GA)
+```
+
+
+# Using GA to optimize makespan in flowshop
+
+The vignette is focused in real-value and binary encodings. I will show here some additional information about how to use permutation encodings using the flowshop as benchmark.
+
+First, we must define a makespan function adequate for GA. As GA solver are maximizers, the function will return the value of makespan multiplied by -1.
+
+```{r}
+makespanGA <- function(M, sol){
+  
+  m <- dim(M)[1]
+  n <- dim(M)[2]
+  
+  M <- M[ , sol]
+  
+  for(j in 2:n) M[1, j] <- M[1, (j-1)] + M[1, j]
+  for(i in 2:m) M[i, 1] <- M[(i-1), 1] + M[i, 1]
+  
+  for(i in 2:m)
+    for(j in 2:n)
+      M[i,j] <- max(M[i-1,j], M[i, j-1]) + M[i, j]
+  
+  
+  return(-M[m, n])
+}
+```
+
+To test the function, we will use the same instance that we have used for local search algorithms:
+
+```{r}
+set.seed(2020)
+instance <- matrix(sample(10:90, 100, replace = TRUE), 5, 20)
+```
+
+Now let's solve the GA with the function defaults. We will make the following choices here:
+
+* The solutions are of the `permutation` type.
+* The lower and upper parameters correspond with the lowest and highest value that can take the permutation. In this case, 'lower=1' and `upper` is equal to the number of columns of the instance matrix.
+* we will hand to the function the parameter `M` of the `makepanGA` function.
+* We will add a `seed` value for reproducibility, as the genetic algorithm includes randomness in their operators.
+
+```{r}
+ga01 <- ga(type = "permutation", fitness = makespanGA, M=instance, lower = 1, upper = dim(instance)[2], seed=1111)
+```
+
+Let's see the solution value and the value of fitness function (note that we have to change the sign of the fitness value function):
+
+```{r}
+ga01@solution
+-ga01@fitnessValue
+```
+
+We can make a plot of the evolution of the algorithm:
+
+```{r, fig.width=11}
+plot(ga01)
+```
+
+# Tuning the parameters
+
+Let's take a look at the parameter defaults:
+
+```{r}
+ga01@popSize #population size
+ga01@maxiter #number of generations
+ga01@pcrossover #probability of crossover between pairs of chromosomes
+ga01@pmutation #the probability of mutation in a parent chromosome
+```
+
+We can check what happens if we tune these parameters:
+
+```{r}
+ga02 <- ga(type = "permutation", fitness = makespanGA, M=instance, lower = 1, upper = dim(instance)[2],  popSize = 100, pcrossover = 1, maxiter = 300, seed=1111)
+-ga02@fitnessValue
+```
+
+Let's see algorithm evolution:
+
+```{r}
+plot(ga02)
+```
+
+
+# Selection, crossover and mutation operators
+
+The algorithm operators can be retrieved looking at the `gaControl` function:
+
+```{r}
+gaControl("permutation")
+```
+
+To see the possible values of operators we can look at the article presenting the algorithm, available at the website of the *Journal of Statistical Software*:
+
+https://www.jstatsoft.org/article/view/v053i04
+
+The available operators for permutation listed in the article are:
+
+Selection operators:
+
+* Linear-rank selection (default): `gaperm_lrSelection()`
+* Nonlinear-rank selection: `gaperm_nlrSelection()`
+* Proportional (roulette-wheel) selection: `gaperm_rwSelection()`
+* Unibaised tournament selection: `gaperm_tourSelection()`
+
+Crossover operators:
+
+* Cycle crossover: `gaperm_cxCrossover()`
+* Partially matched crossover: `gaperm_pmxCrossover()`
+* Order crossover (default): `gaperm_oxCrossover()`
+* Position-based crossover: `gaperm_pbxCrossover()`
+
+Mutation operators:
+
+* Simple inversion mutation (default): `gaperm_simMutation()` DEFAULT
+* Insertion mutation: `gaperm_ismMutation()`
+* Swap mutation: `gaperm_swMutation()`
+* Displacement mutation: `gaperm_dmMutation()`
+* Scramble mutation: `gaperm_scrMutation()`
+
+For a reference for the meaning of the existing operators, you can check:
+
+http://www.rubicite.com/Tutorials/GeneticAlgorithms.aspx
+
+We can change the default operators with the `gaControl` function:
+
+```{r}
+#saving, just in case, the default parameters:
+defaultControl <- gaControl("permutation")
+
+#changing operators:
+gaControl("permutation" = list(selection = "gaperm_nlrSelection", crossover = "gaperm_cxCrossover", mutation = "gaperm_ismMutation"))
+```
+
+Then, we can check algorithm performance with the new operators:
+
+```{r}
+ga03 <- ga(type = "permutation", fitness = makespanGA, M=instance, lower = 1, upper = dim(instance)[2],  popSize = 100, pcrossover = 1, maxiter = 300, seed=1111)
+-ga03@fitnessValue
+```
+
+Let's check another set of parameters:
+
+
+```{r}
+ga04 <- ga(type = "permutation", fitness = makespanGA, M=instance, lower = 1, upper = dim(instance)[2], popSize=100, maxiter = 100, pmutation = 1, seed=1111)
+-ga04@fitnessValue
+```
+
+This version of the GA is the best available for this instance. In fact, it has found a better solution than the obtained with local search algorithms in only 100 iterations:
+
+```{r}
+plot(ga04)
+```
+
+
+Let's show the solution for the record:
+
+```{r}
+ga04@solution
+```
+
+
