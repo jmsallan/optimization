@@ -6,3 +6,4 @@ The present contents of the repository are:
 
 * **GA:** An introduction to genetic algorithms (GA) using R and MATLAB.
 * **Flowshop:** Some developments for the permutative flowshop problem (PFS). In **GA\_flowshop** there is code implementing and testing the functionalities of the **GA** R package for the PFS. In **GRASP\_ILS** and **SA** there are implementations of local search algorithms.
+* **Rperformance:** some code examining the performance of R code for optimization.

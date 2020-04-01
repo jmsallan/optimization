@@ -1,0 +1,172 @@
+---
+title: "Three insertion operators"
+author: "Jose M Sallan"
+date: "3/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Three insertion operators
+
+Let's compare three implementations of an `insertion` function which inserts element `i` of a vector in position `j`. These three operators came from responses of students required to code this operator.
+
+```{r}
+insertion1 <- function(v, i, j){
+  if(i < j){
+    aux <- v[i]
+    for(i in i:(j-1)){
+      v[i] <- v[i+1]
+    }
+    v[j] <- aux
+    return(v)
+  }
+  else if(i > j){
+    aux <- v[i]
+    for(i in i:(j+1)){
+      v[i] <- v[i-1]
+    }
+    v[j] <- aux
+    return(v)
+  }
+  else return(v)
+}
+
+insertion2 <- function(v, i, j){
+  
+  if(i==j) return(v)
+  aux<- v[i]
+  
+  if(i<j){ v[i:(j-1)] <- v[(i+1):j] }
+  if(i>j){ v[(j+1):i] <- v[j:(i-1)] }
+  v[j] <- aux
+  return(v)
+}
+
+insertion3 <- function(v, i, j){
+  
+  aux <- v[i]
+  v<-append(v[-i],aux,j-1)
+  
+  return(v)
+}
+```
+
+Let's examine the three proposals:
+
+* `insertion1` is coded in a similar way as in C++ or Java, processing the function component by component. To code the function in this way, we need to use for loops.
+* `insertion2` is the "official" answer to the coding, which takes advantage of the vectorial subsetting capabilities of R.
+* `insertion3` uses a built-in append function to do the insertion.
+
+Let's build a test sample:
+
+```{r}
+set.seed(2020)
+test <- sample(1:5, 5)
+test
+```
+
+Let's enlist all possible insertions for this sample for the three operators:
+
+```{r}
+list_insertion1 <- list()
+list_insertion2 <- list()
+list_insertion3 <- list()
+n <- length(test)
+k <- 1
+for(i in 1:n)
+  for(j in 1:n)
+    if(i!=j & i!=(j-1)){
+      list_insertion1[[k]] <- insertion1(test, i, j)
+      list_insertion2[[k]] <- insertion2(test, i, j)
+      list_insertion3[[k]] <- insertion3(test, i, j)
+      k <- k+1
+    }
+```
+
+Let's see how it works:
+
+```{r}
+test
+list_insertion1
+```
+
+And if all the three are the same:
+
+```{r}
+identical(list_insertion1, list_insertion2)
+identical(list_insertion1, list_insertion3)
+```
+
+
+Let's build functions that compute all the insertions of a vector of length `n` with each insertion function:
+
+```{r}
+allinsertions1 <- function(n){
+  test <- 1:n
+  l <- list()
+  k <- 1
+for(i in 1:n)
+  for(j in 1:n)
+    if(i!=j & i!=(j-1)){
+      l[[k]] <- insertion1(test, i, j)
+      k <- k+1
+    }
+  return(l)
+}
+
+allinsertions2 <- function(n){
+  test <- 1:n
+  l <- list()
+  k <- 1
+for(i in 1:n)
+  for(j in 1:n)
+    if(i!=j & i!=(j-1)){
+      l[[k]] <- insertion2(test, i, j)
+      k <- k+1
+    }
+  return(l)
+}
+
+allinsertions3 <- function(n){
+  test <- 1:n
+  l <- list()
+  k <- 1
+for(i in 1:n)
+  for(j in 1:n)
+    if(i!=j & i!=(j-1)){
+      l[[k]] <- insertion3(test, i, j)
+      k <- k+1
+    }
+  return(l)
+}
+
+```
+
+And now let's compare performance of each function for a short vector:
+
+```{r}
+library(rbenchmark)
+n <- 10
+benchmark(allinsertions1(n), allinsertions2(n), allinsertions3(n), columns=c('test', 'replications', 'elapsed', 'relative', 'user.self', 'sys.self'), replications=100, order='elapsed')
+```
+
+Now with a longer vector:
+
+```{r}
+library(rbenchmark)
+n <- 50
+benchmark(allinsertions1(n), allinsertions2(n), allinsertions3(n), columns=c('test', 'replications', 'elapsed', 'relative', 'user.self', 'sys.self'), replications=100, order='elapsed')
+```
+
+And with an even longer vector:
+
+```{r}
+library(rbenchmark)
+n <- 100
+benchmark(allinsertions1(n), allinsertions2(n), allinsertions3(n), columns=c('test', 'replications', 'elapsed', 'relative', 'user.self', 'sys.self'), replications=100, order='elapsed')
+```
+
+As a conclusion, the less effective implementation is the `insertion3` function. `insertion1` works better for small vectors, although `insertion2` works much better for longer vectors.

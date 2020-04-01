@@ -1,0 +1,64 @@
+---
+title: "Speed of for loops"
+author: "Jose M Sallan"
+date: "05/03/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Our aim is to sum the columns of a very large matrix. We have three ways of doing that:
+
+To defined a function that sums each column and puts the value into a vector component using a for loop:
+
+```{r}
+f1 <- function(m){
+  n <- dim(m)[2]
+  s <- numeric(n)
+  for(i in 1:n) s[i] <- sum(m[,i])
+  return(s)
+}
+```
+
+Perform the sum of columns with an `apply` loop over columns:
+
+```{r}
+f2 <- function(m) return(apply(m, 2, sum))
+```
+
+Use the base function `colSums`.
+
+Let's define a very large matrix:
+
+```{r}
+M <- matrix(sample(1:100, 1000000, replace = TRUE), 1000, 1000)
+```
+
+and apply each function to it:
+
+```{r}
+s1 <- f1(M)
+s2 <- f2(M)
+s3 <- colSums(M)
+```
+
+The `s2` vector is integer, and the other two numeric. Let's check if they yield the same values:
+
+```{r}
+identical(as.integer(s1), s2)
+identical(s1, s3)
+identical(s2, as.integer(s3))
+```
+
+Let's check the speed of each function:
+
+```{r}
+library(rbenchmark)
+benchmark(f1(M), f2(M), colSums(M), columns=c('test', 'replications', 'elapsed', 'relative', 'user.self', 'sys.self'), order='elapsed')
+```
+
+The best performance is achieved by the built-in function. The `for` loop implementation seems to go faster than `apply` in this context.
